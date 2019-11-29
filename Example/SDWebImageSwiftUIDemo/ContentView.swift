@@ -17,6 +17,46 @@ extension String : Identifiable {
     }
 }
 
+#if os(watchOS)
+// WatchOS does not have system indicator, we create custom one in Example
+struct ActivityIndicator : View {
+    @Binding var isAnimating: Bool
+    
+    var body: some View {
+        ActivityBar()
+        .foregroundColor(Color.white)
+        .frame(width: 50, height: 50)
+    }
+}
+
+struct ProgressIndicator : View {
+    @Binding var isAnimating: Bool
+    @Binding var progress: CGFloat
+    
+    var body: some View {
+        ProgressBar(value: $progress)
+        .foregroundColor(.blue)
+        .frame(maxHeight: 6)
+    }
+}
+
+extension Indicator where T == ActivityIndicator {
+    static var activity: Indicator {
+        Indicator { isAnimating, _ in
+            ActivityIndicator(isAnimating: isAnimating)
+        }
+    }
+}
+
+extension Indicator where T == ProgressIndicator {
+    static var progress: Indicator {
+        Indicator { isAnimating, progress in
+            ProgressIndicator(isAnimating: isAnimating, progress: progress)
+        }
+    }
+}
+#endif
+
 struct ContentView: View {
     @State var imageURLs = [
     "http://assets.sbnation.com/assets/2512203/dogflops.gif",
@@ -38,9 +78,29 @@ struct ContentView: View {
     "https://raw.githubusercontent.com/icons8/flat-color-icons/master/pdf/stack_of_photos.pdf",
     "https://raw.githubusercontent.com/icons8/flat-color-icons/master/pdf/smartphone_tablet.pdf"
     ]
-    @State var animated: Bool = false // You can change between WebImage/AnimatedImage
+    @State var animated: Bool = true // You can change between WebImage/AnimatedImage
     
     var body: some View {
+        let url = imageURLs[0]
+        let a = AnimatedImage(url: URL(string:url))
+        .resizable()
+        /**
+         .onViewUpdate { view, context in
+             view.toolTip = "Mouseover Tip"
+         }
+         */
+        /**
+        .placeholder(UIImage(systemName: "photo"))
+        */
+        .transition(.fade)
+        .indicator(.activity)
+//        .scaledToFit()
+//        .frame(width: CGFloat(100), height: CGFloat(100), alignment: .center)
+        print(type(of: a))
+        return a.scaledToFit()
+    }
+    
+    var body1: some View {
         #if os(iOS) || os(tvOS)
         return NavigationView {
             contentView()
@@ -91,17 +151,17 @@ struct ContentView: View {
                         if self.animated {
                             #if os(macOS) || os(iOS) || os(tvOS)
                             AnimatedImage(url: URL(string:url))
+                            .resizable()
                             /**
                              .onViewUpdate { view, context in
                                  view.toolTip = "Mouseover Tip"
                              }
                              */
-                            .indicator(SDWebImageActivityIndicator.medium)
                             /**
                             .placeholder(UIImage(systemName: "photo"))
                             */
                             .transition(.fade)
-                            .resizable()
+                            .indicator(.activity)
                             .scaledToFit()
                             .frame(width: CGFloat(100), height: CGFloat(100), alignment: .center)
                             #else
@@ -111,7 +171,6 @@ struct ContentView: View {
                             .frame(width: CGFloat(100), height: CGFloat(100), alignment: .center)
                             #endif
                         } else {
-                            #if os(macOS) || os(iOS) || os(tvOS)
                             WebImage(url: URL(string:url))
                             .resizable()
                             /**
@@ -124,19 +183,6 @@ struct ContentView: View {
                             .transition(.fade)
                             .scaledToFit()
                             .frame(width: CGFloat(100), height: CGFloat(100), alignment: .center)
-                            #else
-                            WebImage(url: URL(string:url))
-                            .resizable()
-                            .indicator { _, _ in
-                                ActivityBar()
-                                .foregroundColor(Color.white)
-                                .frame(width: 50, height: 50)
-                            }
-                            .animation(.easeInOut(duration: 0.5))
-                            .transition(.fade)
-                            .scaledToFit()
-                            .frame(width: CGFloat(100), height: CGFloat(100), alignment: .center)
-                            #endif
                         }
                         Text((url as NSString).lastPathComponent)
                     }

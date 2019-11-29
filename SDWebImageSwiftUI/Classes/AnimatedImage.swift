@@ -33,6 +33,12 @@ final class AnimatedImageModel : ObservableObject {
     @Published var scale: CGFloat = 1
 }
 
+/// Status Binding Object, used for Indicator
+public final class AnimatedImageStatus : ObservableObject, IndicatorController {
+    @Published public var isLoading: Bool = false
+    @Published public var progress: CGFloat = 0
+}
+
 /// Completion Handler Binding Object, supports dynamic @State changes
 final class AnimatedImageHandler: ObservableObject {
     // Completion Handler
@@ -75,6 +81,7 @@ final class AnimatedImageConfiguration: ObservableObject {
 /// A Image View type to load image from url, data or bundle. Supports animated and static image format.
 public struct AnimatedImage : PlatformViewRepresentable {
     @ObservedObject var imageModel = AnimatedImageModel()
+    @ObservedObject var imageStatus = AnimatedImageStatus()
     @ObservedObject var imageHandler = AnimatedImageHandler()
     @ObservedObject var imageLayout = AnimatedImageLayout()
     @ObservedObject var imageConfiguration = AnimatedImageConfiguration()
@@ -201,9 +208,20 @@ public struct AnimatedImage : PlatformViewRepresentable {
         if currentOperation != nil {
             return
         }
+        self.imageStatus.isLoading = true
         view.wrapped.sd_setImage(with: imageModel.url, placeholderImage: imageConfiguration.placeholder, options: imageModel.webOptions, context: imageModel.webContext, progress: { (receivedSize, expectedSize, _) in
+            let progress: CGFloat
+            if (expectedSize > 0) {
+                progress = CGFloat(receivedSize) / CGFloat(expectedSize)
+            } else {
+                progress = 0
+            }
+            DispatchQueue.main.async {
+                self.imageStatus.progress = progress
+            }
             self.imageHandler.progressBlock?(receivedSize, expectedSize)
         }) { (image, error, cacheType, _) in
+            self.imageStatus.isLoading = false
             self.layoutView(view, context: context)
             if let image = image {
                 self.imageHandler.successBlock?(image, cacheType)
@@ -764,6 +782,22 @@ extension AnimatedImage {
         return self
     }
     #endif
+}
+
+// Indicator
+extension AnimatedImage {
+    
+    /// Associate a indicator when loading image with url
+    /// - Parameter indicator: The indicator type, see `Indicator`
+    public func indicator<T>(_ indicator: Indicator<T>) -> some View where T : View {
+        return self.modifier(IndicatorViewModifier(controller: imageStatus, indicator: indicator))
+    }
+    
+    /// Associate a indicator when loading image with url, convenient method with block
+    /// - Parameter content: A view that describes the indicator.
+    public func indicator<T>(@ViewBuilder content: @escaping (_ isAnimating: Binding<Bool>, _ progress: Binding<CGFloat>) -> T) -> some View where T : View {
+        return indicator(Indicator(content: content))
+    }
 }
 
 #if DEBUG

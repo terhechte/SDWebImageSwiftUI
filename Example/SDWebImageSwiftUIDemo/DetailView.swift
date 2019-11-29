@@ -100,21 +100,10 @@ struct DetailView: View {
                 .scaledToFit()
                 #endif
             } else {
-                #if os(macOS) || os(iOS) || os(tvOS)
                 WebImage(url: URL(string:url), options: [.progressiveLoad])
                 .resizable()
                 .indicator(.progress)
                 .scaledToFit()
-                #else
-                WebImage(url: URL(string:url), options: [.progressiveLoad])
-                .resizable()
-                .indicator { isAnimating, progress in
-                    ProgressBar(value: progress)
-                    .foregroundColor(.blue)
-                    .frame(maxHeight: 6)
-                }
-                .scaledToFit()
-                #endif
             }
         }
     }
