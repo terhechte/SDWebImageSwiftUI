@@ -23,21 +23,34 @@ public struct Indicator<T> where T : View {
     }
 }
 
+/// A provider which provide the indicator status, like `isLoading`, `progress`, so that we use this status to control the indicator showing
+/// You should use `@Published` property wrapper in all of these protocol required properties
+public protocol IndicatorController : ObservableObject {
+    /// A Binding to control the animation. If image is during loading, the value is true, else (like start loading) the value is false.
+    var isLoading: Bool { get set }
+    
+    /// A Binding to control the progress during loading. If no progress can be reported, the value is 0.
+    var progress: CGFloat { get set }
+}
+
 /// A implementation detail View Modifier with indicator
 /// SwiftUI View Modifier construced by using a internal View type which modify the `body`
 /// It use type system to represent the view hierarchy, and Swift `some View` syntax to hide the type detail for users
-struct IndicatorViewModifier<T> : ViewModifier where T : View {
-    @ObservedObject var imageManager: ImageManager
+public struct IndicatorViewModifier<T, S> : ViewModifier where T : View, S : IndicatorController {
     
+    /// The indicator to control the status management
+    @ObservedObject var controller: S
+    
+    /// The indicator to provide view content
     var indicator: Indicator<T>
     
-    func body(content: Content) -> some View {
+    public func body(content: Content) -> some View {
         ZStack {
             content
-            if imageManager.isLoading {
-                indicator.content($imageManager.isLoading, $imageManager.progress)
+            if controller.isLoading {
+                indicator.content($controller.isLoading, $controller.progress)
             } else {
-                indicator.content($imageManager.isLoading, $imageManager.progress).hidden()
+                indicator.content($controller.isLoading, $controller.progress).hidden()
             }
         }
     }

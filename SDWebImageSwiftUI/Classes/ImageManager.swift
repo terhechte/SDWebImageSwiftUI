@@ -85,3 +85,8 @@ class ImageManager : ObservableObject {
     }
     
 }
+
+/// ImageManager conforms to IndicatorController
+extension ImageManager : IndicatorController {
+    
+}
